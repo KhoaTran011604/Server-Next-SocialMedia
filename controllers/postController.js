@@ -22,9 +22,15 @@ cloudinary.config({
 module.exports.GetAllPost = async (req, res) => {
     const response = new BaseResponse();
     try {
-        const { keySearch, page = 1, pageSize = 10, sortField = "createdAt", sortPost = "desc" } = req.body;
+        const { keySearch, page = 1, pageSize = 10, userId, sortField = "createdAt", sortPost = "desc" } = req.body;
 
         const filter = {};
+
+        // Nếu có userId thì chỉ lấy bài viết của user đó
+        if (userId) {
+            filter.userId = userId;
+        }
+
         if (keySearch) {
             filter.$or = [
                 { content: { $regex: keySearch, $options: "i" } },
