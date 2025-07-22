@@ -23,6 +23,12 @@ const _Schema = new mongoose.Schema(
             type: Array,
             default: []
         },
+        likeCount: {
+            type: Number, default: 0
+        },
+        commentCount: {
+            type: Number, default: 0
+        },
         status: { type: String, enum: ['DisApprove', 'Approve', 'Block'], default: 'DisApprove' }
 
     },

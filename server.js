@@ -15,6 +15,7 @@ const orderRouter = require("./routers/orderRouter");
 const reviewRouter = require("./routers/reviewRouter");
 const cartRouter = require("./routers/cartRouter");
 const postRouter = require("./routers/postRouter");
+const socialRouter = require("./routers/socialRouter");
 const uploadCloudinaryRoter = require("./routers/uploadCloudinaryRoter");
 const { VerifyTokenMiddleware } = require('./controllers/authController')
 
@@ -54,6 +55,7 @@ app.use(orderRouter);
 app.use(reviewRouter);
 app.use(cartRouter);
 app.use(postRouter);
+app.use(socialRouter);
 app.use(uploadCloudinaryRoter);
 app.use(authRouter)
 
