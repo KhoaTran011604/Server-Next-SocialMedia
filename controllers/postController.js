@@ -5,6 +5,7 @@ const path = require('path');
 const postModel = require("../models/postModel");
 const BaseResponse = require("./BaseResponse");
 const { uploadCloudinaryMultipleImages } = require("./uploadCloudinaryController");
+const likeModel = require("../models/likeModel");
 const ObjectId = require('mongoose').Types.ObjectId;
 
 
@@ -137,6 +138,8 @@ module.exports.SeachPost = async (req, res) => {
                     hashTags: { $first: "$hashTags" },
                     comments: { $first: "$comments" },
                     likes: { $first: "$likes" },
+                    createdAt: { $first: "$createdAt" },
+                    updatedAt: { $first: "$createdAt" },
                 }
             }
         ]);
@@ -455,3 +458,132 @@ module.exports.uploadCloudinaryFn = async (files) => {
 }
 
 
+
+// module.exports.GetAllPostByUserId = async (req, res) => {
+//     const response = new BaseResponse();
+//     try {
+//         const { keySearch, page = 1, pageSize = 10, userId, sortField = "createdAt", sortPost = "desc" } = req.body;
+
+//         const filter = {};
+
+//         // Nếu có userId thì chỉ lấy bài viết của user đó
+//         if (userId) {
+//             filter.userId = userId;
+//         }
+
+//         if (keySearch) {
+//             filter.$or = [
+//                 { content: { $regex: keySearch, $options: "i" } },
+//                 { hashTags: { $regex: keySearch, $options: "i" } },
+//                 { status: { $regex: keySearch, $options: "i" } },
+//             ];
+//         }
+
+//         const sortDirection = sortPost.toLowerCase() === "asc" ? 1 : -1;
+//         const sortOptions = { [sortField]: sortDirection };
+
+//         const totalRecords = await postModel.countDocuments(filter);
+
+//         const data = await postModel
+//             .find(filter)
+//             .populate({
+//                 path: 'userId',
+//                 select: 'fullName images', // chỉ lấy field 'name'
+//             })
+
+//             .sort(sortOptions)
+//             .skip((page - 1) * pageSize)
+//             .limit(parseInt(pageSize));
+
+//         response.success = true;
+//         response.data = data;
+//         response.metaData = {
+//             totalRecords,
+//             totalPages: Math.ceil(totalRecords / pageSize),
+//             currentPage: parseInt(page),
+//             pageSize: parseInt(pageSize),
+//         };
+
+//         res.json(response);
+//     } catch (error) {
+//         response.success = false;
+//         response.message = error.toString();
+//         res.status(500).json(response);
+//     }
+// };
+
+
+module.exports.GetAllPostByUserId = async (req, res) => {
+    const response = new BaseResponse();
+    try {
+        const {
+            keySearch,
+            page = 1,
+            pageSize = 10,
+            userId,        // bài viết của user nào
+
+            sortField = "createdAt",
+            sortPost = "desc",
+        } = req.body;
+        const viewerId = req.user.id
+        const filter = {};
+        if (userId) filter.userId = userId;
+
+        if (keySearch) {
+            filter.$or = [
+                { content: { $regex: keySearch, $options: "i" } },
+                { hashTags: { $regex: keySearch, $options: "i" } },
+                { status: { $regex: keySearch, $options: "i" } },
+            ];
+        }
+
+        const sortDirection = sortPost.toLowerCase() === "asc" ? 1 : -1;
+        const sortOptions = { [sortField]: sortDirection };
+
+        const totalRecords = await postModel.countDocuments(filter);
+
+        const posts = await postModel
+            .find(filter)
+            .populate({
+                path: 'userId',
+                select: 'fullName images',
+            })
+            .sort(sortOptions)
+            .skip((page - 1) * pageSize)
+            .limit(parseInt(pageSize))
+            .lean(); // chuyển về object JS thuần
+
+        let postIds = posts.map(post => post._id);
+
+        // Lấy tất cả likes của viewerId với các post đang được lấy
+        const likedPosts = await likeModel.find({
+            userId: viewerId,
+            postId: { $in: postIds },
+            isLike: true,
+        }).select("postId").lean();
+
+        const likedPostIds = new Set(likedPosts.map(item => item.postId.toString()));
+
+        // Gắn isLike = true/false cho từng post
+        const postsWithLike = posts.map(post => ({
+            ...post,
+            isLike: likedPostIds.has(post._id.toString()),
+        }));
+
+        response.success = true;
+        response.data = postsWithLike;
+        response.metaData = {
+            totalRecords,
+            totalPages: Math.ceil(totalRecords / pageSize),
+            currentPage: parseInt(page),
+            pageSize: parseInt(pageSize),
+        };
+
+        res.json(response);
+    } catch (error) {
+        console.error(error);
+        response.success = false;
+        response.message = error.toString();
+        res.status(500).json(response);
+    }
+};

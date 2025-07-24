@@ -10,7 +10,9 @@ const {
     DeletePost,
     CreatePost_UploadMulti,
     UpdatePost_UploadMulti,
+    GetAllPostByUserId,
 } = require("../controllers/postController");
+const { VerifyTokenMiddleware } = require("../controllers/authController");
 
 const router = Router();
 
@@ -22,5 +24,6 @@ router.post("/api/post/update/:id", UpdatePost);
 router.post("/api/post/create-upload-multi", upload.array("files", 5), CreatePost_UploadMulti)
 router.post("/api/post/update-upload-multi/:id", upload.array("files", 5), UpdatePost_UploadMulti)
 router.post("/api/post/delete/:id", DeletePost);
+router.post("/api/post/get-all-by-user-id", VerifyTokenMiddleware, GetAllPostByUserId);
 
 module.exports = router;

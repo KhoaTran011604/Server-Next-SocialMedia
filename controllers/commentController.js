@@ -1,5 +1,6 @@
 
-const commentModel = require("../models/commentModel")
+const commentModel = require("../models/commentModel");
+const postModel = require("../models/postModel");
 const BaseResponse = require("./BaseResponse")
 
 module.exports.createComment = async (req, res) => {
@@ -13,6 +14,8 @@ module.exports.createComment = async (req, res) => {
             content,
             parentId,
         });
+        const result = await postModel.findByIdAndUpdate(postId, { $inc: { commentCount: 1 } }, { new: true });
+
 
         response.success = true;
         response.data = comment;

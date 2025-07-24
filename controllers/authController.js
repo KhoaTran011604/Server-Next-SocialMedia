@@ -12,8 +12,9 @@ const refreshTokenLife = process.env.REFRESH_TOKEN_LIFE;
 const refreshTokenSecret = process.env.REFRESH_TOKEN_SECRET;
 
 const GenerateTokens = (user) => {
+
   const accessToken = jwt.sign(
-    { id: user._id, email: user.email, fullName: user.fullName, avatarPath: user?.avatar != null ? user?.avatar?.imageAbsolutePath : "" },
+    { id: user._id, email: user.email, fullName: user.fullName, profilePic: user?.images?.length > 0 ? user?.images[0]?.imageAbsolutePath : "" },
     accessTokenSecret,
     { expiresIn: accessTokenLife }
   );
@@ -71,12 +72,14 @@ exports.Login = async (req, res) => {
     const { email, password } = req.body;
     const user = await userModel.findOne({ email });
     if (!user) {
+      message.success = false
       response.message = "Invalid email or password"
       return res.status(401).json(response);
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      message.success = false
       response.message = "Invalid email or password"
       return res.status(401).json(response);
     }
@@ -259,7 +262,7 @@ exports.RefreshToken = async (req, res) => {
       }
 
       // Tạo access token mới
-      const newAccessToken = jwt.sign({ id: user._id, email: user.email, fullName: user.fullName, avatarPath: "" }, accessTokenSecret, { expiresIn: accessTokenLife });
+      const newAccessToken = jwt.sign({ id: user._id, email: user.email, fullName: user.fullName, profilePic: user?.images?.length > 0 ? user?.images[0]?.imageAbsolutePath : "" }, accessTokenSecret, { expiresIn: accessTokenLife });
 
       // Lưu accessToken mới vào DB (nếu cần)
       await userModel.updateOne({ _id: user._id }, { $set: { accessToken: newAccessToken } });

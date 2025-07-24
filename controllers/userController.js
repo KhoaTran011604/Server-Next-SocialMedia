@@ -275,6 +275,122 @@ module.exports.UpdateUser_UploadMulti = async (req, res) => {
     }
 };
 
+module.exports.UpdateInfoByUser_UploadMulti = async (req, res) => {
+    const response = new BaseResponse();
+    try {
+        const { id } = req.params; // Lấy ID từ URL params
+        const { fullName, email, old_password, password, phone, address, role, status, oldImages = [], deleteImages = [] } = req.body; // Dữ liệu cập nhật
+        console.log(req.body);
+
+        const dataFindById = await userModel.findById(id);
+        if (!dataFindById) {
+            response.success = false;
+            response.message = "User not exist!.";
+            return res.status(404).json(response);
+        }
+
+        // ✅ Kiểm tra mật khẩu cũ nếu người dùng yêu cầu đổi mật khẩu
+        if (password) {
+
+            const isPasswordCorrect = bcrypt.compareSync(
+                old_password,
+                dataFindById.password
+            );
+
+            if (!isPasswordCorrect) {
+                response.success = false;
+                response.message = "Old password incorrect!.";
+                return res.status(400).json(response);
+            }
+        }
+
+
+        var imagePaths = []
+        var imagePaths_v2 = []
+        var _oldImages = []
+        var _deleteImages = []
+        var _variants = []
+        try {
+            _oldImages = JSON.parse(oldImages)
+            _oldImages = _oldImages.filter(item => item != null)
+        } catch (error) {
+            _oldImages = []
+        }
+        try {
+            _deleteImages = JSON.parse(deleteImages)
+            _deleteImages = _deleteImages.filter(item => item != null)
+        } catch (error) {
+            _deleteImages = []
+        }
+        try {
+            _variants = JSON.parse(variants)
+            _variants = _variants.filter(item => item != null)
+        } catch (error) {
+            _variants = []
+        }
+
+        var updateData = {
+            fullName, email, password, phone, address, role, status
+        }
+
+        if (password) {
+            const hashPassword = bcrypt.hashSync(password, 10);
+            updateData.password = hashPassword
+        }
+
+        //Xư lý xóa ảnh deleteImages
+        if (_deleteImages.length > 0) {
+            _deleteImages.map(image => deleteImageFunction(image.keyToDelete))
+        }
+
+        //
+        if (req.files && req.files.length > 0) {//Có upload mới
+            // imagePaths = req.files.map((file, index) => ({
+            //     imageAbsolutePath: `${req.protocol}://${req.get("host")}/uploads/${file.filename}`,
+            //     fileName: file.filename,
+            //     keyToDelete: path.join(__dirname, "..", file.path),
+            //     imageBase64String: "",
+            //     imageFile: null,
+            //     isNewUpload: false,
+            //     displayOrder: index
+
+            // }));
+            imagePaths = await uploadCloudinaryFn(req.files)
+
+            imagePaths_v2 = [..._oldImages, ...imagePaths];
+        } else {//Không upload ảnh
+            // Không xóa ảnh -> ko cần cập nhật lại images
+            if (_deleteImages?.length > 0) {//Có xóa ảnh cần lọc lại những ảnh chưa bị xóa để cập nhật
+
+                var filterImages = filterRemainingImages(dataFindById.images, _deleteImages, "imageAbsolutePath")
+                //Goi hàm xóa ảnh dựa vào _deleteImages
+
+                imagePaths_v2 = filterImages
+            } else {
+                imagePaths_v2 = [..._oldImages]
+            }
+        }
+
+        updateData.images = imagePaths_v2
+
+        const result = await userModel.findByIdAndUpdate(id, updateData, { new: true });
+
+        if (!result) {
+            response.success = false;
+            response.message = "No data found to update..";
+            return res.json(response);
+        }
+
+        response.success = true;
+        response.data = result._id;
+        res.json(response);
+    } catch (error) {
+        response.success = false;
+        response.message = error.toString();
+        res.status(500).json(response);
+    }
+};
+
 module.exports.DeleteUser = async (req, res) => {
     const response = new BaseResponse();
     try {
