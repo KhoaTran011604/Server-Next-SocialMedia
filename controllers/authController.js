@@ -83,6 +83,11 @@ exports.Login = async (req, res) => {
       response.message = "Invalid email or password"
       return res.status(401).json(response);
     }
+    if (user.status !== "Active") {
+      response.success = false
+      response.message = "Account disabled"
+      return res.status(401).json(response);
+    }
 
     const { accessToken, refreshToken } = GenerateTokens(user);
     const updatedUser = await userModel.updateOne(
