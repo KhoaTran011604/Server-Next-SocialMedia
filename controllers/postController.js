@@ -271,9 +271,13 @@ module.exports.CreatePost_UploadMulti = async (req, res) => {
             response.message = "Failed to create post";
             return res.json(response);
         }
-
+        const result_v2 = await postModel.findById(result._id)
+            .populate({
+                path: 'userId',
+                select: 'fullName images',
+            });
         response.success = true;
-        response.data = result._id;
+        response.data = result_v2;//result._id;
         res.json(response);
     } catch (error) {
         response.success = false;
@@ -379,7 +383,7 @@ module.exports.UpdatePost_UploadMulti = async (req, res) => {
         }
 
         response.success = true;
-        response.data = result._id;
+        response.data = result;//result._id;
         res.json(response);
     } catch (error) {
         response.success = false;
