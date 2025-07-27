@@ -154,9 +154,12 @@ module.exports.sendMessageWithImage = async (req, res) => {
             createdAt: justNow,
             updatedAt: justNow
         }
+        console.log("customNewMessage", customNewMessage);
+
         const receiverSocketId = getReceiverSocketId(receiverId);
         if (receiverSocketId) {
             io.to(receiverSocketId).emit("newMessage", customNewMessage);
+            io.emit("newMessage", customNewMessage);
         }
 
         response.data = newMessage;
