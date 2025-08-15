@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const postModel = require("../models/postModel");
 const BaseResponse = require("./BaseResponse");
-const { uploadCloudinaryMultipleImages } = require("./uploadCloudinaryController");
+const { uploadCloudinaryMultipleImages, deleteImage } = require("./uploadCloudinaryController");
 const likeModel = require("../models/likeModel");
 const ObjectId = require('mongoose').Types.ObjectId;
 
@@ -349,7 +349,7 @@ module.exports.UpdatePost_UploadMulti = async (req, res) => {
 
         //Xư lý xóa ảnh deleteImages
         if (_deleteImages.length > 0) {
-            _deleteImages.map(image => deleteImageFunction(image.keyToDelete))
+            _deleteImages.map(image => deleteImage(image.keyToDelete))
         }
 
         //
@@ -396,6 +396,21 @@ module.exports.DeletePost = async (req, res) => {
     const response = new BaseResponse();
     try {
         const { id } = req.params;
+        // 1. Search post để lấy ảnh
+        const post = await postModel.findById(id);
+        if (!post) {
+            response.success = false;
+            response.message = "Post not found";
+            return res.json(response);
+        }
+
+        // 2. Xóa ảnh Cloudinary nếu có
+        if (post.images && post.images.length > 0) {
+            // Sử dụng Promise.all để chờ tất cả ảnh xóa xong
+            await Promise.all(
+                post.images.map(img => deleteImage(img.keyToDelete))
+            );
+        }
 
         const result = await postModel.findByIdAndDelete(id);
         if (!result) {
@@ -403,7 +418,6 @@ module.exports.DeletePost = async (req, res) => {
             response.message = "Post not found";
             return res.json(response);
         }
-
         response.success = true;
         response.message = "Deleted successfully!";
         res.json(response);
