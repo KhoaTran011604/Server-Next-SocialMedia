@@ -450,19 +450,32 @@ const deleteImageFunction = (relativePath) => {//keyToDelete
     });
 };
 
-
 module.exports.uploadCloudinaryFn = async (files) => {
     let uploadResults = [];
-
+    var result = null
     for (const file of files) {
-        const result = await cloudinary.uploader.upload(file.path, {
-            folder: "my_upload",//"uploads", // Thư mục trên Cloudinary
-            quality: "auto",
-        });
+        if (file.mimetype !== 'video/mp4') {
+            result = await cloudinary.uploader.upload(file.path, {
+                folder: "my_upload",//"uploads", // Thư mục trên Cloudinary
+                quality: "auto",
+            });
+            result.isVideo = false
+        } else {
+            result = await uploadLargeAsync(file.path, {
+                folder: "my_upload",
+                quality: "auto",
+                resource_type: "video",
+                chunk_size: 6000000,
+            });
+            result.isVideo = true;
+        }
 
-        uploadResults.push(result);
-        fs.unlinkSync(file.path); // Xóa file sau khi upload
+
+        if (result)
+            uploadResults.push(result);
+        fs.unlinkSync(file.path);
     }
+
     var dataImages = uploadResults?.length > 0 ? uploadResults.map((item, index) => ({
         imageAbsolutePath: item.secure_url,
         fileName: `${item.original_filename}.${item.format}`,
@@ -470,65 +483,22 @@ module.exports.uploadCloudinaryFn = async (files) => {
         imageBase64String: "",
         imageFile: null,
         isNewUpload: false,
-        displayPost: index
+        displayPost: index,
+        isVideo: item.isVideo
     })) : []
     return dataImages
 }
 
+const uploadLargeAsync = (filePath, options) => {
+    return new Promise((resolve, reject) => {
+        cloudinary.uploader.upload_large(filePath, options, (error, result) => {
+            if (error) return reject(error);
+            resolve(result);
+        });
+    });
+};
 
 
-// module.exports.GetAllPostByUserId = async (req, res) => {
-//     const response = new BaseResponse();
-//     try {
-//         const { keySearch, page = 1, pageSize = 10, userId, sortField = "createdAt", sortPost = "desc" } = req.body;
-
-//         const filter = {};
-
-//         // Nếu có userId thì chỉ lấy bài viết của user đó
-//         if (userId) {
-//             filter.userId = userId;
-//         }
-
-//         if (keySearch) {
-//             filter.$or = [
-//                 { content: { $regex: keySearch, $options: "i" } },
-//                 { hashTags: { $regex: keySearch, $options: "i" } },
-//                 { status: { $regex: keySearch, $options: "i" } },
-//             ];
-//         }
-
-//         const sortDirection = sortPost.toLowerCase() === "asc" ? 1 : -1;
-//         const sortOptions = { [sortField]: sortDirection };
-
-//         const totalRecords = await postModel.countDocuments(filter);
-
-//         const data = await postModel
-//             .find(filter)
-//             .populate({
-//                 path: 'userId',
-//                 select: 'fullName images', // chỉ lấy field 'name'
-//             })
-
-//             .sort(sortOptions)
-//             .skip((page - 1) * pageSize)
-//             .limit(parseInt(pageSize));
-
-//         response.success = true;
-//         response.data = data;
-//         response.metaData = {
-//             totalRecords,
-//             totalPages: Math.ceil(totalRecords / pageSize),
-//             currentPage: parseInt(page),
-//             pageSize: parseInt(pageSize),
-//         };
-
-//         res.json(response);
-//     } catch (error) {
-//         response.success = false;
-//         response.message = error.toString();
-//         res.status(500).json(response);
-//     }
-// };
 
 
 module.exports.GetAllPostByUserId = async (req, res) => {

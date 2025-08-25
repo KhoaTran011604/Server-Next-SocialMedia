@@ -99,7 +99,6 @@ module.exports.sendMessage = async (req, res) => {
         const receiverSocketId = getReceiverSocketId(receiverId);
         if (receiverSocketId) {
             io.to(receiverSocketId).emit("newMessage", customNewMessage);
-            //io.emit("newMessage", customNewMessage);
         }
 
 
